@@ -669,7 +669,12 @@ mcp/               LLM-callable</pre>
       // having computed (and can briefly return ~0).
       W = window.innerWidth;
       H = window.innerHeight;
-      DPR = Math.min(window.devicePixelRatio || 1, 2);
+      // Cap DPR at 3 (not 2) so high-DPI phones get a buffer matching
+      // their physical pixel grid instead of being scaled up 1.5x by
+      // the OS compositor, which softens edges. 3 covers iPhone Pro
+      // and most current Android flagships; anything beyond that is
+      // diminishing returns on memory cost.
+      DPR = Math.min(window.devicePixelRatio || 1, 3);
       canvas.width = W * DPR;
       canvas.height = H * DPR;
       ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
@@ -689,7 +694,12 @@ mcp/               LLM-callable</pre>
 
     function makeLantern(initialDistribute) {
       const depth = Math.pow(Math.random(), 1.4);
-      const size = 18 + depth * 32;
+      // Scale lantern size with viewport width. On a 400-wide phone a
+      // 50-CSS-px lantern is ~13% of viewport, which reads as oversized
+      // and dominates the slide. 900 is the design width — at or above
+      // it lanterns are unchanged; below, they shrink proportionally.
+      const sizeScale = Math.min(1, W / 900);
+      const size = (18 + depth * 32) * sizeScale;
       const baseX = Math.random() * W;
       const y = initialDistribute
         ? Math.random() * (H + size * 2) - size
