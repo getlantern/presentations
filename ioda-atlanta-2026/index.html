@@ -1,0 +1,914 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Lantern — Light Where The Internet Goes Dark</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,300..900,0..100,0..1&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* Backbone — lantern.io brand palette */
+    --ink: #012D2D;          /* deep teal background */
+    --ink-2: #001f20;        /* darker for code panels */
+    --paper: #EFFDFF;        /* pale icy cyan for body text */
+    --paper-dim: #98BFC1;    /* dimmer cyan for secondary text */
+    --teal: #007A7C;         /* brand teal */
+    --teal-bright: #5FD9DB;  /* bright teal — UI chrome accent */
+    --teal-deep: #006163;
+    /* Warm accents — used sparingly. */
+    --amber: #FFC107;        /* brand yellow */
+    --amber-bright: #FFD966;
+    --amber-deep: #E0A500;
+    --ember: #FF7644;        /* lantern flame */
+    --thread: rgba(213, 246, 250, 0.10);
+    --thread-strong: rgba(213, 246, 250, 0.28);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--ink);
+    color: var(--paper);
+    font-family: "Atkinson Hyperlegible", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  /* Gradient floor — cool teal mist with a warm hint where lanterns gather */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+    background:
+      radial-gradient(ellipse 90% 50% at 50% 100%, rgba(0, 122, 124, 0.18), transparent 70%),
+      radial-gradient(ellipse 70% 35% at 20% 105%, rgba(13, 176, 179, 0.10), transparent 70%),
+      radial-gradient(ellipse 70% 35% at 80% 105%, rgba(255, 193, 7, 0.04), transparent 70%);
+  }
+
+  /* Vignette */
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 3;
+    background: radial-gradient(ellipse 110% 80% at 50% 50%, transparent 50%, rgba(0,0,0,0.45) 100%);
+  }
+
+  #lanterns {
+    position: fixed;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+  }
+
+  .deck {
+    position: fixed;
+    inset: 0;
+    z-index: 4;
+    overflow: hidden;
+  }
+
+  .slide {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6vh 8vw;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(2vh);
+    transition: opacity 600ms ease, transform 800ms cubic-bezier(.2,.7,.2,1), visibility 0s linear 800ms;
+  }
+  .slide.active {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+    transition: opacity 700ms ease 100ms, transform 900ms cubic-bezier(.2,.7,.2,1), visibility 0s;
+  }
+
+  /* Staggered children reveal */
+  .slide .reveal {
+    opacity: 0;
+    transform: translateY(14px);
+    transition: opacity 600ms ease, transform 700ms cubic-bezier(.2,.7,.2,1);
+  }
+  .slide.active .reveal {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .slide.active .reveal:nth-child(1) { transition-delay: 250ms; }
+  .slide.active .reveal:nth-child(2) { transition-delay: 380ms; }
+  .slide.active .reveal:nth-child(3) { transition-delay: 510ms; }
+  .slide.active .reveal:nth-child(4) { transition-delay: 640ms; }
+  .slide.active .reveal:nth-child(5) { transition-delay: 770ms; }
+  .slide.active .reveal:nth-child(6) { transition-delay: 900ms; }
+  .slide.active .reveal:nth-child(7) { transition-delay: 1030ms; }
+
+  /* Typography */
+  h1, h2, h3 {
+    font-family: "Fraunces", Georgia, serif;
+    font-weight: 400;
+    font-variation-settings: "opsz" 144, "SOFT" 30, "WONK" 0;
+    letter-spacing: -0.01em;
+    line-height: 1.05;
+    color: var(--paper);
+  }
+  .display {
+    font-size: clamp(3rem, 7vw, 6.5rem);
+    font-weight: 300;
+    font-variation-settings: "opsz" 144, "SOFT" 40, "WONK" 0;
+    letter-spacing: -0.03em;
+  }
+  .ital {
+    font-style: italic;
+    font-variation-settings: "opsz" 144, "SOFT" 100, "WONK" 1;
+  }
+  .amber { color: var(--amber-bright); }
+  .deep-amber { color: var(--amber); }
+  .mono {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.85em;
+    letter-spacing: 0;
+  }
+  .eyebrow {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.78rem;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: var(--teal-bright);
+    opacity: 0.9;
+  }
+  p, li { font-size: clamp(1.05rem, 1.25vw, 1.3rem); line-height: 1.55; color: var(--paper); }
+  .dim { color: var(--paper-dim); }
+  .small { font-size: 0.95rem; opacity: 0.85; }
+
+  /* Slide column */
+  .stack { max-width: 1100px; width: 100%; display: flex; flex-direction: column; gap: 2.4rem; }
+  .stack--center { text-align: center; align-items: center; }
+  .stack--wide { max-width: 1300px; }
+
+  .lead { font-size: clamp(1.4rem, 1.8vw, 1.9rem); line-height: 1.4; font-family: "Fraunces", serif; font-weight: 300; font-variation-settings: "opsz" 144, "SOFT" 60; }
+
+  /* Pillar grid */
+  .pillars {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.4rem;
+    width: 100%;
+  }
+  .pillar {
+    border: 1px solid var(--thread);
+    background: linear-gradient(180deg, rgba(0, 122, 124, 0.10), rgba(0, 122, 124, 0));
+    padding: 1.8rem 2rem;
+    border-radius: 14px;
+    position: relative;
+    overflow: hidden;
+  }
+  .pillar::before {
+    content: "";
+    position: absolute;
+    top: -40%;
+    right: -40%;
+    width: 200px;
+    height: 200px;
+    background: radial-gradient(circle, rgba(13, 176, 179, 0.22), transparent 70%);
+    pointer-events: none;
+  }
+  .pillar h3 { font-size: 1.55rem; margin-bottom: 0.45rem; }
+  .pillar .eyebrow { font-size: 0.7rem; margin-bottom: 0.5rem; }
+  .pillar p { font-size: 1rem; color: var(--paper-dim); }
+
+  /* Hero numbers */
+  .stat-row { display: flex; gap: 3rem; flex-wrap: wrap; justify-content: center; }
+  .stat { display: flex; flex-direction: column; gap: 0.3rem; align-items: center; text-align: center; }
+  .stat .num {
+    font-family: "Fraunces", serif;
+    font-weight: 300;
+    font-size: clamp(2.6rem, 4vw, 4rem);
+    color: var(--amber-bright);
+    font-variation-settings: "opsz" 144, "SOFT" 0;
+    line-height: 1;
+  }
+  .stat .label {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--paper-dim);
+  }
+
+  /* Protocol chips */
+  .chips { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+  .chip {
+    padding: 0.45rem 0.95rem;
+    border: 1px solid var(--thread-strong);
+    border-radius: 999px;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.82rem;
+    color: var(--paper);
+    background: rgba(0, 122, 124, 0.10);
+    letter-spacing: 0.03em;
+  }
+  .chip.lantern {
+    border-color: rgba(255, 193, 7, 0.55);
+    background: rgba(255, 193, 7, 0.10);
+    color: var(--amber);
+  }
+
+  /* Quote */
+  blockquote {
+    font-family: "Fraunces", serif;
+    font-style: italic;
+    font-weight: 300;
+    font-size: clamp(1.6rem, 2.2vw, 2.4rem);
+    line-height: 1.4;
+    font-variation-settings: "opsz" 144, "SOFT" 80, "WONK" 1;
+    color: var(--paper);
+    border-left: 2px solid var(--teal-bright);
+    padding: 0.4rem 0 0.4rem 1.6rem;
+    max-width: 900px;
+  }
+  blockquote cite {
+    display: block;
+    font-style: normal;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.78rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--paper-dim);
+    margin-top: 1rem;
+    font-variation-settings: normal;
+  }
+
+  /* Code-ish ascii box */
+  .ascii {
+    font-family: "JetBrains Mono", monospace;
+    color: var(--teal-bright);
+    line-height: 1.1;
+    font-size: clamp(0.6rem, 0.85vw, 0.95rem);
+    white-space: pre;
+    text-shadow: 0 0 20px rgba(13, 176, 179, 0.35);
+  }
+
+  /* Footer / navigation */
+  .nav {
+    position: fixed;
+    bottom: 2rem;
+    left: 0;
+    right: 0;
+    z-index: 10;
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    pointer-events: auto;
+  }
+  .dot {
+    width: 6px; height: 6px;
+    background: var(--thread-strong);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 220ms ease;
+    border: none;
+    padding: 0;
+  }
+  .dot:hover { background: var(--paper); }
+  .dot.active {
+    width: 24px;
+    border-radius: 4px;
+    background: var(--teal-bright);
+  }
+
+  .corner {
+    position: fixed;
+    top: 1.8rem;
+    z-index: 10;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--paper-dim);
+  }
+  .corner-l { left: 2rem; }
+  .corner-r { right: 2rem; }
+
+  /* Big layouts */
+  .split { display: grid; grid-template-columns: 1.1fr 1fr; gap: 4rem; align-items: center; }
+
+  /* Closing */
+  .url {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 1.05rem;
+    color: var(--teal-bright);
+    text-decoration: none;
+    letter-spacing: 0.04em;
+    border-bottom: 1px solid var(--teal);
+    padding-bottom: 2px;
+  }
+  .urlrow { display: flex; flex-direction: column; gap: 0.8rem; align-items: center; }
+
+  /* Lantern wordmark sizing */
+  .wordmark { width: clamp(180px, 18vw, 320px); height: auto; }
+  .wordmark path { fill: var(--paper); }
+
+  /* Help hint */
+  .hint {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    z-index: 10;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.65rem;
+    color: var(--paper-dim);
+    letter-spacing: 0.15em;
+    opacity: 0.6;
+    transition: opacity 0.6s;
+  }
+  .hint.hide { opacity: 0; pointer-events: none; }
+
+  .composed {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 0.6rem;
+    width: 100%;
+    align-items: stretch;
+  }
+  .step {
+    border: 1px solid var(--thread);
+    border-radius: 12px;
+    padding: 1.2rem 1.1rem;
+    background: rgba(0, 122, 124, 0.08);
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    position: relative;
+  }
+  .step .n {
+    font-family: "JetBrains Mono", monospace;
+    color: var(--teal-bright);
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+  }
+  .step h4 { font-family: "Fraunces", serif; font-size: 1.2rem; color: var(--paper); font-weight: 400; }
+  .step p { font-size: 0.92rem; color: var(--paper-dim); }
+  .step.arrow::after {
+    content: "→";
+    position: absolute;
+    right: -0.95rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--teal-bright);
+    font-size: 1.4rem;
+    z-index: 1;
+  }
+
+  @media (max-width: 900px) {
+    .pillars { grid-template-columns: 1fr; }
+    .split { grid-template-columns: 1fr; gap: 2rem; }
+    .composed { grid-template-columns: 1fr 1fr; }
+    .step.arrow::after { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<canvas id="lanterns"></canvas>
+
+<div class="corner corner-l">Lantern</div>
+<div class="corner corner-r" id="slide-num">01 / 12</div>
+
+<div class="deck" id="deck">
+
+  <!-- Slide 1: Title -->
+  <section class="slide active">
+    <div class="stack stack--center">
+      <svg class="wordmark reveal" viewBox="0 0 107 20" xmlns="http://www.w3.org/2000/svg" aria-label="Lantern">
+        <path d="M1.11519 19.9977C0.999172 19.9977 0.887893 19.9516 0.805855 19.8695C0.723818 19.7875 0.677734 19.6762 0.677734 19.5602V0.437457C0.677734 0.321438 0.723818 0.210158 0.805855 0.128121C0.887893 0.0460831 0.999172 0 1.11519 0H4.3648C4.48082 0 4.5921 0.0460831 4.67414 0.128121C4.75617 0.210158 4.80226 0.321438 4.80226 0.437457V16.4243C4.80226 16.5403 4.84834 16.6516 4.93038 16.7337C5.01241 16.8157 5.12368 16.8618 5.23969 16.8618H11.0178C11.1338 16.8618 11.2451 16.9079 11.3271 16.9899C11.4091 17.0719 11.4552 17.1832 11.4552 17.2992V19.559C11.4552 19.675 11.4091 19.7862 11.3271 19.8683C11.2451 19.9503 11.1338 19.9964 11.0178 19.9964L1.11519 19.9977Z"/>
+        <path d="M24.9874 19.9978C24.8635 19.9928 24.7443 19.9493 24.6463 19.8734C24.5482 19.7974 24.4763 19.6928 24.4406 19.5741L23.5819 16.227C23.5462 16.1083 23.4743 16.0037 23.3763 15.9278C23.2783 15.8518 23.159 15.8083 23.0351 15.8033H18.1888C18.0648 15.8085 17.9454 15.8519 17.847 15.9277C17.7486 16.0034 17.6762 16.1078 17.6395 16.2264L16.7552 19.5748C16.7188 19.6934 16.6465 19.7978 16.5482 19.8736C16.4499 19.9494 16.3305 19.9928 16.2065 19.9978H13.39C13.3375 20.0017 13.2848 19.9924 13.2368 19.9708C13.1887 19.9491 13.1468 19.9159 13.1149 19.874C13.0829 19.8321 13.0619 19.7829 13.0538 19.7309C13.0456 19.6789 13.0506 19.6257 13.0681 19.576L18.2513 0.620098C18.289 0.501522 18.3624 0.397404 18.4613 0.321938C18.5603 0.246473 18.68 0.203285 18.8044 0.198242H22.6358C22.76 0.20335 22.8796 0.246673 22.9782 0.322282C23.0769 0.397891 23.1498 0.502117 23.187 0.620709L28.2814 19.5754C28.2985 19.6252 28.3031 19.6786 28.2946 19.7307C28.2861 19.7827 28.2648 19.8319 28.2327 19.8738C28.2006 19.9156 28.1586 19.9488 28.1105 19.9705C28.0624 19.9921 28.0097 20.0015 27.957 19.9978H24.9874ZM20.8047 3.7841C20.786 3.63124 20.7304 3.4852 20.6429 3.3585C20.555 3.48501 20.4986 3.63071 20.4785 3.78345L18.3138 12.7493C18.2981 12.8002 18.295 12.8541 18.3048 12.9065C18.3145 12.9588 18.3368 13.008 18.3698 13.0498C18.4027 13.0917 18.4453 13.1249 18.4939 13.1467C18.5425 13.1684 18.5956 13.1781 18.6487 13.1749H22.5727C22.6259 13.178 22.6791 13.1683 22.7278 13.1464C22.7765 13.1246 22.8192 13.0914 22.8523 13.0496C22.8854 13.0078 22.908 12.9586 22.918 12.9062C22.9281 12.8538 22.9254 12.7998 22.9101 12.7487L20.8047 3.7841Z"/>
+        <path d="M40.8212 19.9978C40.6917 19.9909 40.5661 19.9511 40.4562 19.8822C40.3463 19.8133 40.2558 19.7176 40.1931 19.6041L33.8289 6.4088C33.7724 6.26445 33.691 6.13118 33.5883 6.01509C33.5392 6.15536 33.5226 6.30492 33.5395 6.45255L33.602 19.5604C33.602 19.6764 33.5559 19.7877 33.4739 19.8697C33.3919 19.9517 33.2806 19.9978 33.1646 19.9978H30.4149C30.2989 19.9978 30.1876 19.9517 30.1056 19.8697C30.0235 19.7877 29.9774 19.6764 29.9774 19.5604V0.635699C29.9774 0.51968 30.0235 0.408439 30.1056 0.326401C30.1876 0.244363 30.2989 0.198242 30.4149 0.198242H34.1376C34.2669 0.205082 34.3922 0.245004 34.5016 0.314157C34.611 0.383311 34.7009 0.479392 34.7625 0.593208L41.0655 13.8698C41.1207 14.0146 41.2011 14.1486 41.303 14.2654C41.3521 14.1251 41.369 13.9756 41.3524 13.8279L41.3211 0.635699C41.3211 0.51968 41.3672 0.408439 41.4492 0.326401C41.5313 0.244363 41.6426 0.198242 41.7586 0.198242H44.3733C44.4893 0.198242 44.6006 0.244363 44.6826 0.326401C44.7646 0.408439 44.8107 0.51968 44.8107 0.635699V19.5604C44.8107 19.6764 44.7646 19.7877 44.6826 19.8697C44.6006 19.9517 44.4893 19.9978 44.3733 19.9978H40.8212Z"/>
+        <path d="M55.8219 3.05043C55.7059 3.05043 55.5946 3.09651 55.5126 3.17855C55.4305 3.26058 55.3845 3.37186 55.3845 3.48788V19.5604C55.3845 19.6178 55.3731 19.6747 55.3512 19.7278C55.3292 19.7809 55.297 19.8291 55.2563 19.8697C55.2157 19.9103 55.1675 19.9426 55.1144 19.9645C55.0613 19.9865 55.0044 19.9978 54.947 19.9978H51.8618C51.7457 19.9978 51.6345 19.9517 51.5524 19.8697C51.4704 19.7877 51.4243 19.6764 51.4243 19.5604V3.48788C51.4243 3.37186 51.3782 3.26058 51.2962 3.17855C51.2141 3.09651 51.1029 3.05043 50.9868 3.05043H47.3985C47.2825 3.05043 47.1712 3.00434 47.0892 2.9223C47.0071 2.84027 46.9611 2.72899 46.9611 2.61297V0.635699C46.9611 0.51968 47.0071 0.408439 47.0892 0.326401C47.1712 0.244363 47.2825 0.198242 47.3985 0.198242H59.4102C59.4677 0.198242 59.5246 0.209557 59.5776 0.231541C59.6307 0.253524 59.679 0.28578 59.7196 0.326401C59.7602 0.367022 59.7924 0.415217 59.8144 0.468291C59.8364 0.521365 59.8477 0.578252 59.8477 0.635699V2.61297C59.8477 2.67042 59.8364 2.7273 59.8144 2.78038C59.7924 2.83345 59.7602 2.88168 59.7196 2.9223C59.679 2.96293 59.6307 2.99514 59.5776 3.01713C59.5246 3.03911 59.4677 3.05043 59.4102 3.05043H55.8219Z"/>
+        <path d="M62.7343 19.9978C62.6183 19.9978 62.507 19.9517 62.4249 19.8697C62.3429 19.7877 62.2968 19.6764 62.2968 19.5604V0.635699C62.2968 0.51968 62.3429 0.408439 62.4249 0.326401C62.507 0.244363 62.6183 0.198242 62.7343 0.198242H72.495C72.611 0.198242 72.7223 0.244363 72.8043 0.326401C72.8864 0.408439 72.9324 0.51968 72.9324 0.635699V2.72484C72.9324 2.84086 72.8864 2.95214 72.8043 3.03418C72.7223 3.11621 72.611 3.1623 72.495 3.1623H66.5913C66.5339 3.1623 66.477 3.17361 66.4239 3.1956C66.3708 3.21758 66.3226 3.2498 66.282 3.29042C66.2414 3.33104 66.2091 3.37927 66.1872 3.43235C66.1652 3.48542 66.1539 3.54231 66.1539 3.59975V7.98237C66.1539 8.09839 66.1999 8.20963 66.282 8.29167C66.364 8.3737 66.4753 8.41979 66.5913 8.41979H71.995C72.1111 8.41979 72.2223 8.46591 72.3044 8.54795C72.3864 8.62998 72.4325 8.74122 72.4325 8.85724V10.7233C72.4325 10.8393 72.3864 10.9505 72.3044 11.0326C72.2223 11.1146 72.1111 11.1607 71.995 11.1607H66.5951C66.5376 11.1607 66.4807 11.1721 66.4276 11.194C66.3746 11.216 66.3263 11.2482 66.2857 11.2889C66.2451 11.3295 66.2129 11.3777 66.1909 11.4308C66.1689 11.4838 66.1576 11.5407 66.1576 11.5982V16.5676C66.1576 16.625 66.1689 16.6819 66.1909 16.735C66.2129 16.7881 66.2451 16.8363 66.2857 16.8769C66.3263 16.9176 66.3746 16.9498 66.4276 16.9718C66.4807 16.9937 66.5376 17.0051 66.5951 17.0051H72.8343C72.9504 17.0051 73.0616 17.0511 73.1436 17.1332C73.2257 17.2152 73.2718 17.3265 73.2718 17.4425V19.5604C73.2718 19.6764 73.2257 19.7877 73.1436 19.8697C73.0616 19.9517 72.9504 19.9978 72.8343 19.9978H62.7343Z"/>
+        <path d="M85.7547 19.9978C85.6263 19.9912 85.502 19.9506 85.3944 19.8802C85.2868 19.8099 85.1998 19.7122 85.1423 19.5973L81.8008 11.9532C81.743 11.8382 81.6559 11.7406 81.5482 11.6703C81.4405 11.5999 81.3162 11.5593 81.1877 11.5525H79.8129C79.6969 11.5525 79.5856 11.5986 79.5036 11.6807C79.4215 11.7627 79.3754 11.874 79.3754 11.99V19.5604C79.3754 19.6178 79.3641 19.6747 79.3421 19.7278C79.3201 19.7809 79.2879 19.8291 79.2473 19.8697C79.2067 19.9103 79.1585 19.9426 79.1054 19.9645C79.0523 19.9865 78.9954 19.9978 78.938 19.9978H75.9202C75.8628 19.9978 75.8059 19.9865 75.7528 19.9645C75.6997 19.9426 75.6515 19.9103 75.6109 19.8697C75.5703 19.8291 75.538 19.7809 75.5161 19.7278C75.4941 19.6747 75.4828 19.6178 75.4828 19.5604V0.635699C75.4828 0.578252 75.4941 0.521365 75.5161 0.468291C75.538 0.415217 75.5703 0.367022 75.6109 0.326401C75.6515 0.28578 75.6997 0.253524 75.7528 0.231541C75.8059 0.209557 75.8628 0.198242 75.9202 0.198242H81.8233C82.0639 0.198242 82.4576 0.209492 82.6982 0.222615C83.4652 0.264993 84.228 0.364235 84.9804 0.519478C85.7538 0.708401 86.4793 1.05639 87.1108 1.54124C87.707 2.01091 88.1842 2.61441 88.5037 3.30289C88.8571 4.10352 89.0279 4.97278 89.0037 5.84761C89.0168 6.53962 88.8974 7.22775 88.6518 7.87488C88.4419 8.42029 88.141 8.92614 87.7619 9.37095C87.4225 9.76554 87.02 10.1011 86.5708 10.3639C86.2926 10.5214 85.9996 10.6512 85.6959 10.7514C85.6432 10.7666 85.5945 10.7931 85.5532 10.8292C85.5119 10.8653 85.4789 10.91 85.4568 10.9602C85.4346 11.0104 85.4237 11.0648 85.4249 11.1196C85.426 11.1745 85.4392 11.2284 85.4635 11.2776L89.3555 19.6016C89.3826 19.6429 89.3972 19.6911 89.3976 19.7405C89.398 19.7899 89.3842 19.8383 89.3579 19.8801C89.3316 19.9218 89.2937 19.9551 89.249 19.976C89.2043 19.9969 89.1545 20.0045 89.1055 19.9978H85.7547ZM85.0485 6.01509C85.0668 5.50424 84.9634 4.99634 84.7467 4.53337C84.5649 4.16441 84.2935 3.84689 83.9574 3.60975C83.6273 3.38368 83.2572 3.22249 82.8669 3.1348C82.6133 3.07736 82.3557 3.03914 82.0964 3.02045C81.8558 3.0067 81.4627 2.99481 81.2215 2.99481H79.8148C79.6987 2.99481 79.5875 3.0409 79.5054 3.12293C79.4234 3.20497 79.3773 3.31625 79.3773 3.43227V8.65291C79.3773 8.76893 79.4234 8.88017 79.5054 8.96221C79.5875 9.04425 79.6987 9.09033 79.8148 9.09033H81.2215C81.5128 9.08673 81.8037 9.06588 82.0926 9.02785C82.8009 8.93269 83.4818 8.69181 84.0924 8.32043C84.4201 8.03706 84.6772 7.68111 84.8432 7.28089C85.0092 6.88067 85.0795 6.44726 85.0485 6.01509Z"/>
+        <path d="M102.332 19.9978C102.203 19.9909 102.077 19.9511 101.967 19.8822C101.857 19.8133 101.767 19.7176 101.704 19.6041L95.3392 6.4088C95.2833 6.26418 95.2018 6.13081 95.0986 6.01509C95.0502 6.15552 95.0338 6.30497 95.0505 6.45255L95.1129 19.5604C95.1129 19.6764 95.0669 19.7877 94.9848 19.8697C94.9028 19.9517 94.7915 19.9978 94.6755 19.9978H91.9258C91.8098 19.9978 91.6985 19.9517 91.6165 19.8697C91.5345 19.7877 91.4884 19.6764 91.4884 19.5604V0.635699C91.4884 0.51968 91.5345 0.408439 91.6165 0.326401C91.6985 0.244363 91.8098 0.198242 91.9258 0.198242H95.6485C95.7778 0.205082 95.9031 0.245004 96.0125 0.314157C96.122 0.383311 96.2118 0.479392 96.2734 0.593208L102.576 13.8698C102.631 14.0147 102.712 14.1486 102.814 14.2654C102.863 14.125 102.88 13.9756 102.863 13.8279L102.831 0.635699C102.831 0.51968 102.843 0.408439 102.865 0.326401C102.887 0.244363 102.935 0.198242 102.992 0.198242H105.885C105.942 0.198242 105.999 0.209557 106.052 0.231541C106.105 0.253524 106.154 0.28578 106.194 0.326401C106.235 0.367022 106.267 0.415217 106.289 0.468291C106.311 0.521365 106.322 0.578252 106.322 0.635699V19.5604C106.322 19.6178 106.311 19.6747 106.289 19.7278C106.267 19.7809 106.235 19.8291 106.194 19.8697C106.154 19.9103 106.105 19.9426 106.052 19.9645C105.999 19.9865 105.942 19.9978 105.885 19.9978H102.332Z"/>
+      </svg>
+      <h1 class="display reveal">Light where the<br/><span class="amber">internet goes dark.</span></h1>
+      <p class="lead dim reveal" style="max-width: 680px;">A field report on four parallel investments in censorship circumvention — the bandit, the new VPN, Unbounded, and the corpus.</p>
+      <div class="reveal" style="opacity: 0.5; margin-top: 1rem;">
+        <span class="mono small">2026 · lantern.io</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Slide 2: Four Pillars -->
+  <section class="slide">
+    <div class="stack stack--wide">
+      <span class="eyebrow reveal">What We've Been Building</span>
+      <h2 class="display reveal" style="font-size: clamp(2.6rem, 5vw, 4.4rem);">Four pieces that compose.</h2>
+      <div class="pillars reveal">
+        <div class="pillar">
+          <span class="eyebrow">01 / The Bandit</span>
+          <h3>Adaptive routing through a hostile network.</h3>
+          <p>A multi-armed bandit picks the best route for every (country, ISP) in real time. Learns from every connection. Forgets what stops working.</p>
+        </div>
+        <div class="pillar">
+          <span class="eyebrow">02 / The New VPN</span>
+          <h3>Protocol diversity at the edge.</h3>
+          <p>Rebuilt on sing-box + lantern-box. Every modern transport plus Lantern's own additions. Public, contributable, upstream-friendly.</p>
+        </div>
+        <div class="pillar">
+          <span class="eyebrow">03 / Unbounded</span>
+          <h3>Volunteer connections become routes.</h3>
+          <p>Browser-based P2P proxying. Lineage from Flash Proxy, Snowflake. Now bundled inside the Lantern VPN client.</p>
+        </div>
+        <div class="pillar">
+          <span class="eyebrow">04 / The Corpus</span>
+          <h3>Knowing the adversary.</h3>
+          <p>A structured, LLM-queryable index of every censor-circumvention paper that matters. So design decisions are informed, not guessed.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Slide 3: The Routing Problem -->
+  <section class="slide">
+    <div class="stack">
+      <span class="eyebrow reveal">01 · The Bandit</span>
+      <h2 class="display reveal" style="font-size: clamp(2.6rem, 5.5vw, 5rem);">The routing problem.</h2>
+      <p class="lead reveal" style="max-width: 880px;">We run <span class="amber">thousands of routes</span> across <span class="amber">a dozen+ providers</span>. Every route can be blocked. Block patterns differ <span class="ital">by country, by ISP, by hour.</span></p>
+      <p class="lead dim reveal" style="max-width: 880px;">No human can keep up. So we don't try.</p>
+    </div>
+  </section>
+
+  <!-- Slide 4: EXP3.S -->
+  <section class="slide">
+    <div class="stack stack--wide">
+      <span class="eyebrow reveal">01 · The Bandit</span>
+      <h2 class="display reveal" style="font-size: clamp(2.6rem, 5vw, 4.4rem);">A multi-armed bandit, <span class="amber">per ASN.</span></h2>
+      <div class="split">
+        <div class="reveal" style="display: flex; flex-direction: column; gap: 1.4rem;">
+          <p class="lead">Every (data center, protocol) combination is an arm. Every connection is a pull. Success is a reward, blocking is the opposite.</p>
+          <p>The <span class="mono deep-amber">EXP3.S</span> algorithm balances exploration and exploitation, with a shift parameter so good arms that suddenly go bad — the censor caught up — can be re-learned without restart.</p>
+          <p>Crucially, we learn <span class="amber">per (ASN, country)</span>: what works for Iranian Mobile may not work for IranCell, may not work for a fiber ISP in Hangzhou.</p>
+        </div>
+        <div class="reveal" style="display: flex; flex-direction: column; gap: 1rem;">
+          <div class="chip lantern mono" style="align-self: flex-start;">EXP3.S · γ = 0.20 · α = shift</div>
+          <div class="stat-row" style="justify-content: flex-start; gap: 2rem;">
+            <div class="stat">
+              <div class="num">60s</div>
+              <div class="label">poll when learning</div>
+            </div>
+            <div class="stat">
+              <div class="num">15m</div>
+              <div class="label">poll when converged</div>
+            </div>
+          </div>
+          <p class="small dim">Confidence is computed from weight entropy: high-entropy ASNs poll fast for more data, converged ones back off.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Slide 5: Bandit × WATER -->
+  <section class="slide">
+    <div class="stack stack--wide">
+      <span class="eyebrow reveal">01 · The Bandit × WATER</span>
+      <h2 class="display reveal" style="font-size: clamp(2.4rem, 4.6vw, 4.2rem);">A bandit with a<br/><span class="amber">moving action space</span>.</h2>
+
+      <p class="lead reveal" style="max-width: 1000px;">The standard multi-armed bandit assumes a fixed set of arms. In censorship circumvention that assumption breaks the moment the censor ships a new classifier — and again when we ship a counter. The arms themselves are non-stationary, and the catalog of arms keeps growing.</p>
+
+      <div class="pillars reveal">
+        <div class="pillar">
+          <span class="eyebrow">Bandit</span>
+          <h3>Picks the working arm, per region.</h3>
+          <p>EXP3.S handles non-stationary rewards — we re-learn an arm that the censor catches up to without restarting. But the arms it can choose from are still whatever shipped in the binary.</p>
+        </div>
+        <div class="pillar">
+          <span class="eyebrow">WATER</span>
+          <h3>Adds and replaces arms at runtime.</h3>
+          <p>WebAssembly transports ship as <span class="mono amber">data</span>, not code. A new WATER module rolls out through the config service and shows up in the bandit's catalog within one poll cycle — no app release, no app-store review queue.</p>
+        </div>
+      </div>
+
+      <p class="lead reveal" style="max-width: 1000px; margin-top: 0.4rem;">When a censor closes a gap, we don't ship a new client. We ship a new arm — and the bandit finds it, for the regions where it works.</p>
+
+      <p class="reveal small dim mono" style="margin-top: 0.2rem;">Live operational view: <a href="https://bandit.lantern.io" class="url">bandit.lantern.io</a></p>
+    </div>
+  </section>
+
+  <!-- Slide 6: New VPN intro -->
+  <section class="slide">
+    <div class="stack">
+      <span class="eyebrow reveal">02 · The New VPN</span>
+      <h2 class="display reveal" style="font-size: clamp(2.6rem, 5.5vw, 5rem);">We rebuilt the whole client<br/>on <span class="mono amber" style="font-size: 0.85em;">sing-box</span>.</h2>
+      <p class="lead reveal" style="max-width: 920px;">The old Lantern was Lantern's own protocol stack, end to end. Powerful but isolated — every change was ours alone to write, ours alone to keep working.</p>
+      <p class="lead reveal" style="max-width: 920px;">The new one rides on <span class="mono deep-amber">sing-box</span>, the universal proxy platform — and adds Lantern's protocols as a public library: <span class="mono deep-amber">lantern-box</span>.</p>
+      <p class="lead dim reveal" style="max-width: 920px;">Everything we build is now usable by every other circumvention tool. Everything they build is usable by us.</p>
+    </div>
+  </section>
+
+  <!-- Slide 7: Protocol Diversity -->
+  <section class="slide">
+    <div class="stack stack--wide">
+      <span class="eyebrow reveal">02 · The New VPN · Protocol Diversity</span>
+      <h2 class="display reveal" style="font-size: clamp(2.4rem, 4.6vw, 4.2rem);">Each protocol is its own<br/><span class="amber">detection problem.</span></h2>
+      <p class="lead reveal" style="max-width: 980px;">We ship many protocols on purpose. Each one forces the censor to learn it, build a detector for it, deploy that detector at scale. That's expensive. Diversity is the defense.</p>
+      <div class="reveal" style="display: flex; flex-direction: column; gap: 1rem; margin-top: 0.5rem;">
+        <div class="eyebrow" style="opacity: 0.6;">From sing-box upstream</div>
+        <div class="chips">
+          <span class="chip">Hysteria2</span>
+          <span class="chip">VLESS</span>
+          <span class="chip">Shadowsocks</span>
+          <span class="chip">VMess</span>
+          <span class="chip">Trojan</span>
+          <span class="chip">WireGuard</span>
+          <span class="chip">TUIC</span>
+          <span class="chip">SSH</span>
+        </div>
+        <div class="eyebrow" style="opacity: 0.6; margin-top: 0.8rem;">Added by lantern-box</div>
+        <div class="chips">
+          <span class="chip lantern">Samizdat</span>
+          <span class="chip lantern">Reflex</span>
+          <span class="chip lantern">WATER</span>
+          <span class="chip lantern">ALGeneva</span>
+          <span class="chip lantern">AmneziaWG</span>
+          <span class="chip lantern">Outline SDK Proxyless</span>
+          <span class="chip lantern">Unbounded</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Slide 8: Unbounded -->
+  <section class="slide">
+    <div class="stack">
+      <span class="eyebrow reveal">03 · Unbounded</span>
+      <h2 class="display reveal" style="font-size: clamp(2.6rem, 5.5vw, 5rem);">Volunteer connections<br/><span class="amber">become routes.</span></h2>
+      <p class="lead reveal" style="max-width: 920px;">A swarm of short-lived residential IPs — provided by volunteers in less censored regions — carries traffic for users in heavily censored ones. The censor can't easily pre-block what doesn't exist yet.</p>
+      <p class="lead dim reveal" style="max-width: 920px;">Direct lineage from <span class="ital">Flash Proxy</span> (Stanford, 2012) through <span class="ital">uProxy</span> through Psiphon's <span class="ital">Conduit</span> — the volunteer-relay model at the largest scale we've seen deployed. Same core idea, refined for browser-based deployment and concurrent multiplexing.</p>
+      <p class="reveal small dim" style="max-width: 920px;">Open source: <a href="https://github.com/getlantern/unbounded" class="url">github.com/getlantern/unbounded</a> · Live widget: <a href="https://unbounded.lantern.io" class="url">unbounded.lantern.io</a></p>
+    </div>
+  </section>
+
+  <!-- Slide 9: Unbounded integrated -->
+  <section class="slide">
+    <div class="stack">
+      <span class="eyebrow reveal">03 · Unbounded · Recently shipped</span>
+      <h2 class="display reveal" style="font-size: clamp(2.4rem, 5vw, 4.4rem);">Every Lantern user<br/><span class="amber">can now be a route.</span></h2>
+      <p class="lead reveal" style="max-width: 920px;">Until recently, Unbounded was a separate web widget. We've now integrated it directly into the Lantern VPN client across platforms.</p>
+      <p class="lead reveal" style="max-width: 920px;">Volunteers in safe regions get a one-click <span class="ital">"Share My Connection"</span> toggle. Users in blocked regions get residential IPs the censor has no reason to pre-block — because they didn't exist yesterday.</p>
+    </div>
+  </section>
+
+  <!-- Slide 10: Corpus -->
+  <section class="slide">
+    <div class="stack stack--wide">
+      <span class="eyebrow reveal">04 · The Corpus · corpus.lantern.io</span>
+      <h2 class="display reveal" style="font-size: clamp(2.4rem, 4.8vw, 4.2rem);"><span class="amber">Knowing the adversary.</span></h2>
+      <div class="split reveal">
+        <div style="display: flex; flex-direction: column; gap: 1.2rem;">
+          <p>The censorship circumvention field is rich — gfw.report, net4people, OONI, CensorBib. But none of it is LLM-queryable. No common schema. No common vocabulary for "censor / detection technique / defense."</p>
+          <p>We've built a structured, controlled-vocabulary index of every paper that matters, exposed through an MCP server so any AI assistant can compose corpus queries with internal data queries in the same conversation.</p>
+          <p class="dim">A protocol design conversation now starts from <span class="ital">what censors actually do</span>, not from what we remember reading.</p>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 0.7rem;">
+          <pre class="ascii" style="background: var(--ink-2); padding: 1.2rem; border-radius: 10px; border: 1px solid var(--thread);">corpus/
+  papers/          one YAML per paper
+  findings/        extracted findings
+
+schema/
+  taxonomy.yaml    controlled vocab:
+                     censors
+                     detection_techniques
+                     defenses
+
+mcp/               LLM-callable</pre>
+          <p class="small dim mono" style="text-align: center;">→ <a href="https://corpus.lantern.io" class="url">corpus.lantern.io</a></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Slide 11: The Pattern -->
+  <section class="slide">
+    <div class="stack stack--wide">
+      <span class="eyebrow reveal">The Pattern</span>
+      <h2 class="display reveal" style="font-size: clamp(2.4rem, 4.5vw, 4rem);">Four pieces. One motion.</h2>
+      <p class="lead reveal dim" style="max-width: 980px; margin-bottom: 1.4rem;">They compose. The corpus tells us what's coming, the VPN gives us a wide protocol surface, the bandit picks what's working right now, and Unbounded scales the volunteer fleet behind all of it.</p>
+      <div class="composed reveal">
+        <div class="step arrow">
+          <span class="n">01</span>
+          <h4>Corpus</h4>
+          <p class="small">Teaches us what censors and detectors do, today.</p>
+        </div>
+        <div class="step arrow">
+          <span class="n">02</span>
+          <h4>VPN + lantern-box</h4>
+          <p class="small">Gives us the protocol surface to deploy in response.</p>
+        </div>
+        <div class="step arrow">
+          <span class="n">03</span>
+          <h4>Bandit</h4>
+          <p class="small">Picks the working protocol-route combination, live, per ASN.</p>
+        </div>
+        <div class="step">
+          <span class="n">04</span>
+          <h4>Unbounded</h4>
+          <p class="small">Scales the egress fleet using volunteers in safe regions.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Slide 12: Closing -->
+  <section class="slide">
+    <div class="stack stack--center">
+      <span class="eyebrow reveal">In short</span>
+      <blockquote class="reveal">
+        We are building a circumvention stack that listens to its environment, learns from it, and changes shape faster than the censor can react.
+      </blockquote>
+      <div class="reveal urlrow" style="margin-top: 2rem;">
+        <a href="https://lantern.io" class="url">lantern.io</a>
+        <a href="https://bandit.lantern.io" class="url">bandit.lantern.io</a>
+        <a href="https://unbounded.lantern.io" class="url">unbounded.lantern.io</a>
+        <a href="https://corpus.lantern.io" class="url">corpus.lantern.io</a>
+      </div>
+      <p class="small dim reveal mono" style="margin-top: 2rem; letter-spacing: 0.18em;">— THANK YOU —</p>
+    </div>
+  </section>
+
+</div>
+
+<nav class="nav" id="nav" aria-label="Slides"></nav>
+<div class="hint" id="hint">← → · SPACE · ESC</div>
+
+<script>
+  /* ============================================================
+   * SKY LANTERNS — paper lanterns drifting slowly upward.
+   * Body is a translucent paper bulb lit from within. Gentle
+   * horizontal sway. The flame's glow modulates the body color.
+   * ============================================================ */
+  (function () {
+    const canvas = document.getElementById('lanterns');
+    const ctx = canvas.getContext('2d');
+    let W = 0, H = 0, DPR = Math.min(window.devicePixelRatio || 1, 2);
+    let lanterns = [];
+    let density = 1;
+    let last = performance.now();
+
+    function resize() {
+      W = canvas.clientWidth = window.innerWidth;
+      H = canvas.clientHeight = window.innerHeight;
+      canvas.width = W * DPR;
+      canvas.height = H * DPR;
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      seed();
+    }
+
+    function seed() {
+      const base = Math.round((W * H) / 75000);
+      const target = Math.max(6, Math.min(22, Math.round(base * density)));
+      while (lanterns.length < target) lanterns.push(makeLantern(true));
+      if (lanterns.length > target) lanterns.length = target;
+    }
+
+    function makeLantern(initialDistribute) {
+      const depth = Math.pow(Math.random(), 1.4);
+      const size = 18 + depth * 32;
+      const baseX = Math.random() * W;
+      const y = initialDistribute
+        ? Math.random() * (H + size * 2) - size
+        : H + size * 2 + Math.random() * 80;
+      const driftSpeed = 4 + depth * 9;
+      const swayAmp = 6 + depth * 14;
+      const swayPeriod = 7 + Math.random() * 6;
+      const swayPhase = Math.random() * Math.PI * 2;
+      const hueShift = (Math.random() - 0.5) * 16;
+      const alpha = 0.55 + depth * 0.4;
+      const flickerSeed = Math.random() * Math.PI * 2;
+      const flickerSpeed = 0.8 + Math.random() * 0.5;
+      return {
+        baseX, y, size, depth, driftSpeed, swayAmp, swayPeriod, swayPhase,
+        hueShift, alpha, flickerSeed, flickerSpeed,
+      };
+    }
+
+    function step(now) {
+      const dt = Math.min(0.08, (now - last) / 1000);
+      last = now;
+      ctx.clearRect(0, 0, W, H);
+      const t = now / 1000;
+      for (let i = 0; i < lanterns.length; i++) {
+        const L = lanterns[i];
+        L.y -= L.driftSpeed * dt;
+        if (L.y < -L.size * 3) lanterns[i] = makeLantern(false);
+        drawLantern(lanterns[i], t);
+      }
+      requestAnimationFrame(step);
+    }
+
+    function flickerAt(L, t) {
+      const a = Math.sin(L.flickerSeed + t * L.flickerSpeed);
+      const b = Math.sin(L.flickerSeed * 1.7 + t * L.flickerSpeed * 2.3);
+      return 0.88 + 0.09 * a + 0.03 * b;
+    }
+
+    function drawLantern(L, t) {
+      const flicker = flickerAt(L, t);
+      const a = L.alpha;
+      const s = L.size;
+      const sway = Math.sin(t * (2 * Math.PI / L.swayPeriod) + L.swayPhase) * L.swayAmp;
+      const px = L.baseX + sway;
+      const py = L.y;
+
+      // Halo
+      const haloR = s * 4.0 * (0.95 + flicker * 0.10);
+      const halo = ctx.createRadialGradient(px, py, 0, px, py, haloR);
+      halo.addColorStop(0,    `rgba(255, ${200 + L.hueShift}, ${110}, ${0.18 * a * flicker})`);
+      halo.addColorStop(0.35, `rgba(255, ${170 + L.hueShift}, ${85}, ${0.07 * a * flicker})`);
+      halo.addColorStop(1,    'rgba(255, 130, 60, 0)');
+      ctx.fillStyle = halo;
+      ctx.fillRect(px - haloR, py - haloR, haloR * 2, haloR * 2);
+
+      // Body
+      const bw = s;
+      const bh = s * 1.18;
+      const bx = px;
+      const by = py;
+
+      // Outer rim
+      ctx.fillStyle = `rgba(255, ${150 + L.hueShift}, ${70}, ${0.35 * a})`;
+      paperShape(bx, by, bw / 2 + 1, bh / 2 + 1);
+      ctx.fill();
+
+      // Paper body
+      const lit = ctx.createRadialGradient(
+        bx, by + bh * 0.18, s * 0.05,
+        bx, by, bw * 0.75,
+      );
+      lit.addColorStop(0,    `rgba(255, ${245 + L.hueShift}, ${190}, ${0.95 * a * flicker})`);
+      lit.addColorStop(0.35, `rgba(255, ${200 + L.hueShift}, ${110}, ${0.85 * a})`);
+      lit.addColorStop(0.75, `rgba(230, ${140 + L.hueShift}, ${60}, ${0.70 * a})`);
+      lit.addColorStop(1,    `rgba(160, ${75 + L.hueShift}, ${30}, ${0.55 * a})`);
+      ctx.fillStyle = lit;
+      paperShape(bx, by, bw / 2, bh / 2);
+      ctx.fill();
+
+      // Faint vertical paper-seams
+      ctx.strokeStyle = `rgba(120, 60, 30, ${0.18 * a})`;
+      ctx.lineWidth = 0.5;
+      for (let i = -1; i <= 1; i++) {
+        if (i === 0) continue;
+        const fx = bx + i * (bw / 3.2);
+        const norm = (i / 1.6);
+        const half = Math.sqrt(Math.max(0, 1 - norm * norm)) * (bh / 2) * 0.94;
+        ctx.beginPath();
+        ctx.moveTo(fx, by - half);
+        ctx.lineTo(fx, by + half);
+        ctx.stroke();
+      }
+
+      // Top cap
+      ctx.fillStyle = `rgba(60, 36, 20, ${0.78 * a})`;
+      ctx.beginPath();
+      ctx.ellipse(bx, by - bh / 2 + s * 0.02, bw * 0.18, s * 0.07, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Ascending string
+      ctx.strokeStyle = `rgba(60, 36, 20, ${0.45 * a})`;
+      ctx.lineWidth = 0.6;
+      ctx.beginPath();
+      ctx.moveTo(bx, by - bh / 2 - s * 0.04);
+      ctx.lineTo(bx, by - bh / 2 - s * 0.4);
+      ctx.stroke();
+
+      // Bottom opening
+      const openY = by + bh / 2 - s * 0.04;
+      const og = ctx.createLinearGradient(bx - bw * 0.25, openY, bx + bw * 0.25, openY);
+      og.addColorStop(0,   `rgba(255, 160, 80, 0)`);
+      og.addColorStop(0.5, `rgba(255, 230, 160, ${0.85 * a * flicker})`);
+      og.addColorStop(1,   `rgba(255, 160, 80, 0)`);
+      ctx.fillStyle = og;
+      ctx.fillRect(bx - bw * 0.25, openY, bw * 0.5, s * 0.07);
+
+      // Tassel
+      ctx.fillStyle = `rgba(60, 36, 20, ${0.45 * a})`;
+      ctx.fillRect(bx - bw * 0.04, by + bh / 2 + s * 0.02, bw * 0.08, s * 0.14);
+
+      // Flame
+      const fScale = 0.85 + flicker * 0.20;
+      const flameW = bw * 0.10 * fScale;
+      const flameH = bh * 0.20 * fScale;
+      const flameY = by + bh * 0.18 - Math.sin(t * L.flickerSpeed * 1.6 + L.flickerSeed) * bh * 0.012;
+      const fg = ctx.createRadialGradient(bx, flameY, 0, bx, flameY, flameH);
+      fg.addColorStop(0,    `rgba(255, 252, 230, ${0.95 * a})`);
+      fg.addColorStop(0.45, `rgba(255, 210, 130, ${0.75 * a})`);
+      fg.addColorStop(1,    `rgba(255, 140, 60, 0)`);
+      ctx.fillStyle = fg;
+      ctx.beginPath();
+      ctx.ellipse(bx, flameY, flameW, flameH, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Paper-lantern silhouette: rounded top, slightly pinched waist
+    function paperShape(cx, cy, rx, ry) {
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - ry);
+      ctx.bezierCurveTo(
+        cx + rx * 0.95, cy - ry,
+        cx + rx,        cy - ry * 0.3,
+        cx + rx * 0.98, cy + ry * 0.15,
+      );
+      ctx.bezierCurveTo(
+        cx + rx * 0.95, cy + ry * 0.65,
+        cx + rx * 0.55, cy + ry,
+        cx,             cy + ry,
+      );
+      ctx.bezierCurveTo(
+        cx - rx * 0.55, cy + ry,
+        cx - rx * 0.95, cy + ry * 0.65,
+        cx - rx * 0.98, cy + ry * 0.15,
+      );
+      ctx.bezierCurveTo(
+        cx - rx,        cy - ry * 0.3,
+        cx - rx * 0.95, cy - ry,
+        cx,             cy - ry,
+      );
+      ctx.closePath();
+    }
+
+    window.setLanternDensity = function (d) {
+      density = Math.max(0.4, Math.min(1.4, d));
+      seed();
+    };
+
+    window.addEventListener('resize', resize);
+    resize();
+    requestAnimationFrame(step);
+  })();
+
+  /* ============================================================
+   * SLIDE NAVIGATION
+   * ============================================================ */
+  (function () {
+    const slides = document.querySelectorAll('.slide');
+    const nav = document.getElementById('nav');
+    const slideNum = document.getElementById('slide-num');
+    const hint = document.getElementById('hint');
+    let current = 0;
+
+    // Density per slide
+    const densities = [1.3, 0.7, 0.85, 0.75, 0.8, 0.85, 0.75, 0.95, 0.85, 0.75, 0.7, 1.2];
+
+    slides.forEach((_, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'dot';
+      btn.setAttribute('aria-label', `Slide ${i + 1}`);
+      btn.addEventListener('click', () => go(i));
+      nav.appendChild(btn);
+    });
+
+    function go(n) {
+      n = Math.max(0, Math.min(slides.length - 1, n));
+      slides[current].classList.remove('active');
+      slides[n].classList.add('active');
+      nav.children[current].classList.remove('active');
+      nav.children[n].classList.add('active');
+      current = n;
+      slideNum.textContent = String(n + 1).padStart(2, '0') + ' / ' + String(slides.length).padStart(2, '0');
+      if (window.setLanternDensity) window.setLanternDensity(densities[n] || 0.8);
+    }
+
+    nav.children[0].classList.add('active');
+    slideNum.textContent = '01 / ' + String(slides.length).padStart(2, '0');
+
+    window.addEventListener('keydown', (e) => {
+      switch (e.key) {
+        case 'ArrowRight':
+        case ' ':
+        case 'PageDown':
+          e.preventDefault(); go(current + 1); break;
+        case 'ArrowLeft':
+        case 'PageUp':
+          e.preventDefault(); go(current - 1); break;
+        case 'Home': go(0); break;
+        case 'End': go(slides.length - 1); break;
+        case 'Escape': go(0); break;
+      }
+      if (e.key >= '1' && e.key <= '9') go(Number(e.key) - 1);
+    });
+
+    let used = false;
+    window.addEventListener('keydown', () => {
+      if (!used) { used = true; hint.classList.add('hide'); }
+    });
+    setTimeout(() => hint.classList.add('hide'), 7000);
+  })();
+</script>
+</body>
+</html>
