@@ -694,12 +694,12 @@ mcp/               LLM-callable</pre>
 
     function makeLantern(initialDistribute) {
       const depth = Math.pow(Math.random(), 1.4);
-      // Scale lantern size with viewport width. On a 400-wide phone a
-      // 50-CSS-px lantern is ~13% of viewport, which reads as oversized
-      // and dominates the slide. 900 is the design width — at or above
-      // it lanterns are unchanged; below, they shrink proportionally.
+      // Below 900 CSS-px viewport (phone/narrow tablet) shrink the
+      // already-modest range proportionally; above, use 12–34 CSS px.
+      // 50px lanterns on desktop dominated the slide and competed with
+      // the type.
       const sizeScale = Math.min(1, W / 900);
-      const size = (18 + depth * 32) * sizeScale;
+      const size = (12 + depth * 22) * sizeScale;
       const baseX = Math.random() * W;
       const y = initialDistribute
         ? Math.random() * (H + size * 2) - size
