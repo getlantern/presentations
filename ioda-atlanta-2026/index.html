@@ -663,8 +663,17 @@ mcp/               LLM-callable</pre>
     let last = performance.now();
 
     function resize() {
-      W = canvas.clientWidth = window.innerWidth;
-      H = canvas.clientHeight = window.innerHeight;
+      // Size the drawing buffer to the canvas's actual CSS box, not to
+      // window.innerWidth/innerHeight at script-load time. On slow first
+      // paint (more common over HTTPS than file://) the viewport hasn't
+      // settled when this runs, leaving the buffer sized for an earlier
+      // smaller viewport and CSS scaling it back up — which renders the
+      // lanterns visibly larger and blurry. The ResizeObserver below
+      // calls resize() again whenever the CSS box actually changes.
+      const rect = canvas.getBoundingClientRect();
+      W = Math.max(1, Math.round(rect.width));
+      H = Math.max(1, Math.round(rect.height));
+      DPR = Math.min(window.devicePixelRatio || 1, 2);
       canvas.width = W * DPR;
       canvas.height = H * DPR;
       ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
@@ -848,7 +857,13 @@ mcp/               LLM-callable</pre>
     };
 
     window.addEventListener('resize', resize);
+    if ('ResizeObserver' in window) {
+      new ResizeObserver(resize).observe(canvas);
+    }
     resize();
+    // Layout/fonts can shift the viewport after script load; re-resize on
+    // window.load so the canvas buffer matches the final settled size.
+    window.addEventListener('load', resize);
     requestAnimationFrame(step);
   })();
 
